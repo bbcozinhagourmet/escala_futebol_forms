@@ -297,11 +297,18 @@ function parseCSV(csv) {
     }
     columns.push(current.trim());
 
-    // Remove TODAS as aspas de cada coluna
-    return columns.map(col => col.replace(/"/g, '').trim());
+    // Remove TODAS as aspas
+    let cleanCols = columns.map(col => col.replace(/"/g, '').trim());
+
+    // Se o primeiro campo tiver Nome e Posição juntos, separa
+    if (cleanCols.length === 2 && cleanCols[0].includes(',')) {
+      const [nome, posicao] = cleanCols[0].split(',').map(s => s.trim());
+      cleanCols = [nome, posicao, cleanCols[1]];
+    }
+
+    return cleanCols;
   });
 }
-
 
     function normalizeString(str) {
       return str.toLowerCase()
