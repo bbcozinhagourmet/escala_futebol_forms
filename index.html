@@ -170,13 +170,7 @@
     <div class="forms-config">
       <h3>📋 Integração com Google Forms</h3>
       <label>URL da Planilha Google Sheets (CSV Export):</label>
-      <input type="text" id="googleSheetsUrl" placeholder="Cole aqui o link de exportação CSV da sua planilha" />
-      <small>
-        1. Crie um Google Forms com campos: Nome, Posição, Ano de Nascimento<br>
-        2. Vá em "Respostas" → "Criar planilha"<br>
-        3. Na planilha: Arquivo → Compartilhar → "Qualquer pessoa com o link pode visualizar"<br>
-        4. Copie o link e substitua "/edit#gid=0" por "/export?format=csv"
-      </small>
+      <input type="text" id="googleSheetsUrl" placeholder="https://docs.google.com/spreadsheets/d/1J6aVw8pj-mAqgHBXBg3fvSPicEEWwud3hjfH5Ywe8Lc/export?format=csv" />
       <button class="google-forms-btn" onclick="syncWithGoogleForms()">🔄 Sincronizar com Google Forms</button>
       <div id="syncStatus"></div>
     </div>
