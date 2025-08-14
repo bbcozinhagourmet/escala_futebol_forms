@@ -397,7 +397,7 @@
     function generateResult(matched, notFound) {
       let csv = 'Nome,Posição,Nascimento\n';
       matched.forEach(player => {
-        csv += `"${player.name}","${player.position}","${player.birthYear}"\n`;
+        csv += `"${player.name},${player.position}","${player.birthYear}"\n`;
       });
       
       window.resultCSV = csv;
