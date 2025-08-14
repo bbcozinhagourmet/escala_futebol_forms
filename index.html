@@ -1,461 +1,310 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Debug - Integração Forms + GitHub</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 20px;
-      background-color: #f5f5f5;
-    }
-    .container {
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      margin-bottom: 20px;
-    }
-    h1 { color: #333; text-align: center; }
-    h2 { color: #4285F4; border-bottom: 2px solid #4285F4; padding-bottom: 5px; }
-    h3 { color: #666; }
-    
-    input, textarea {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      box-sizing: border-box;
-      margin: 5px 0;
-      font-family: monospace;
-      font-size: 12px;
-    }
-    
-    button {
-      background-color: #4285F4;
-      color: white;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      margin: 5px;
-    }
-    button:hover { background-color: #3367D6; }
-    
-    .test-btn { background-color: #FF9800; }
-    .test-btn:hover { background-color: #F57C00; }
-    
-    .success { background: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin: 10px 0; }
-    .error { background: #f8d7da; color: #721c24; padding: 10px; border-radius: 5px; margin: 10px 0; }
-    .info { background: #cce8ff; color: #004085; padding: 10px; border-radius: 5px; margin: 10px 0; }
-    .warning { background: #fff3cd; color: #856404; padding: 10px; border-radius: 5px; margin: 10px 0; }
-    
-    .debug-section {
-      background: #f8f9fa;
-      padding: 15px;
-      border-radius: 5px;
-      margin: 10px 0;
-      border-left: 4px solid #6c757d;
-    }
-    
-    .data-preview {
-      background: #f1f3f4;
-      padding: 10px;
-      border-radius: 5px;
-      font-family: monospace;
-      font-size: 11px;
-      max-height: 200px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      margin: 10px 0;
-    }
-    
-    .step {
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      padding: 15px;
-      margin: 10px 0;
-    }
-    
-    .step.completed { border-color: #28a745; background: #f8fff9; }
-    .step.error { border-color: #dc3545; background: #fff8f8; }
-    .step.processing { border-color: #ffc107; background: #fffef7; }
-    
-    .small-text { font-size: 11px; color: #666; margin: 5px 0; }
-  </style>
-</head>
-<body>
-  <h1>🔧 Debug - Integração Forms + GitHub</h1>
-  
-  <div class="container">
-    <h2>🎯 Configuração e Teste</h2>
-    
-    <div class="step" id="step1">
-      <h3>📋 Passo 1: URL do Google Forms/Sheets</h3>
-      <input type="text" id="formsUrl" placeholder="https://docs.google.com/spreadsheets/d/.../export?format=csv">
-      <div class="small-text">Cole aqui a URL de exportação CSV da sua planilha do Google Forms</div>
-      <button class="test-btn" onclick="testFormsUrl()">🧪 Testar URL do Forms</button>
-      <div id="formsResult"></div>
-    </div>
-    
-    <div class="step" id="step2">
-      <h3>📊 Passo 2: URL do GitHub (Base de Dados)</h3>
-      <input type="text" id="githubUrl" placeholder="https://raw.githubusercontent.com/usuario/repo/main/jogadores.csv">
-      <div class="small-text">Cole aqui a URL RAW do arquivo CSV no GitHub com todos os jogadores</div>
-      <button class="test-btn" onclick="testGithubUrl()">🧪 Testar URL do GitHub</button>
-      <div id="githubResult"></div>
-    </div>
-    
-    <div class="step" id="step3">
-      <h3>🔄 Passo 3: Processamento Completo</h3>
-      <button onclick="processIntegration()" id="processBtn" disabled>🚀 Processar Integração</button>
-      <div id="processResult"></div>
-    </div>
-  </div>
+<script>
+    let formsData = null;
+    let githubData = null;
+    let step1Ok = false;
+    let step2Ok = false;
 
-  <div class="container" id="debugInfo" style="display: none;">
-    <h2>🔍 Informações de Debug</h2>
-    <div id="debugDetails"></div>
-  </div>
+    function updateUI() {
+      const processBtn = document.getElementById('processBtn');
+      processBtn.disabled = !(step1Ok && step2Ok);
+      
+      document.getElementById('step1').className = step1Ok ? 'step completed' : 'step';
+      document.getElementById('step2').className = step2Ok ? 'step completed' : 'step';
+    }
 
-  <div class="container" id="finalResult" style="display: none;">
-    <h2>✅ Resultado Final</h2>
-    <div id="finalData"></div>
-    <button onclick="downloadResult()" id="downloadBtn" style="display: none;">💾 Download CSV</button>
-  </div>
+    async function testFormsUrl() {
+      const url = document.getElementById('formsUrl').value.trim();
+      const resultDiv = document.getElementById('formsResult');
+      
+      if (!url) {
+        resultDiv.innerHTML = '<div class="error">❌ Por favor, cole a URL do Google Sheets</div>';
+        return;
+      }
+      
+      if (!url.includes('docs.google.com') || !url.includes('export?format=csv')) {
+        resultDiv.innerHTML = '<div class="warning">⚠️ URL suspeita. Certifique-se que é uma URL de exportação CSV</div>';
+      }
+      
+      resultDiv.innerHTML = '<div class="info">🔄 Testando conexão com Google Sheets...</div>';
+      
+      try {
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          throw new Error(`Erro HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const text = await response.text();
+        const lines = text.split('\n').filter(line => line.trim());
+        
+        if (lines.length === 0) {
+          throw new Error('Arquivo CSV vazio');
+        }
+        
+        formsData = parseCSV(text, true);
+        
+        let preview = `Primeira linha (cabeçalho): ${lines[0]}\n`;
+        preview += `Total de linhas: ${lines.length}\n`;
+        preview += `Dados processados: ${formsData.length} registros\n\n`;
+        preview += 'Primeiras 3 linhas de dados:\n';
+        formsData.slice(0, 3).forEach((row, i) => {
+          preview += `${i + 1}: ${JSON.stringify(row)}\n`;
+        });
+        
+        resultDiv.innerHTML = `
+          <div class="success">✅ Google Sheets conectado com sucesso!</div>
+          <div class="data-preview">${preview}</div>
+        `;
+        
+        step1Ok = true;
+        updateUI();
+        
+      } catch (error) {
+        resultDiv.innerHTML = `
+          <div class="error">❌ Erro ao acessar Google Sheets: ${error.message}</div>
+          <div class="debug-section">
+            <strong>Debug:</strong><br>
+            URL: ${url}<br>
+            Erro: ${error.toString()}
+          </div>
+        `;
+        step1Ok = false;
+        updateUI();
+      }
+    }
 
-  <div class="container">
-    <h2>💡 Dicas de Solução</h2>
-    <div class="info">
-      <strong>Problemas Comuns:</strong>
-      <ul>
-        <li><strong>URL do Forms:</strong> Certifique-se que termina com <code>/export?format=csv</code></li>
-        <li><strong>Permissões:</strong> A planilha deve ser pública ou você deve estar logado</li>
-        <li><strong>URL do GitHub:</strong> Use SEMPRE o link RAW, não o link normal</li>
-        <li><strong>CORS:</strong> Alguns navegadores bloqueiam requisições, teste em abas privadas</li>
-        <li><strong>Formato:</strong> Verifique se os nomes nos dois arquivos coincidem exatamente</li>
-      </ul>
-    </div>
-  </div>
-
-  <script>
-    let formsData = null;
-    let githubData = null;
-    let step1Ok = false;
-    let step2Ok = false;
-
-    function updateUI() {
-      const processBtn = document.getElementById('processBtn');
-      processBtn.disabled = !(step1Ok && step2Ok);
-      
-      document.getElementById('step1').className = step1Ok ? 'step completed' : 'step';
-      document.getElementById('step2').className = step2Ok ? 'step completed' : 'step';
-    }
-
-    async function testFormsUrl() {
-      const url = document.getElementById('formsUrl').value.trim();
-      const resultDiv = document.getElementById('formsResult');
-      
-      if (!url) {
-        resultDiv.innerHTML = '<div class="error">❌ Por favor, cole a URL do Google Sheets</div>';
-        return;
-      }
-      
-      if (!url.includes('docs.google.com') || !url.includes('export?format=csv')) {
-        resultDiv.innerHTML = '<div class="warning">⚠️ URL suspeita. Certifique-se que é uma URL de exportação CSV</div>';
-      }
-      
-      resultDiv.innerHTML = '<div class="info">🔄 Testando conexão com Google Sheets...</div>';
-      
-      try {
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-          throw new Error(`Erro HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const text = await response.text();
-        const lines = text.split('\n').filter(line => line.trim());
-        
-        if (lines.length === 0) {
-          throw new Error('Arquivo CSV vazio');
-        }
-        
-        formsData = parseCSV(text, true);
-        
-        let preview = `Primeira linha (cabeçalho): ${lines[0]}\n`;
-        preview += `Total de linhas: ${lines.length}\n`;
-        preview += `Dados processados: ${formsData.length} registros\n\n`;
-        preview += 'Primeiras 3 linhas de dados:\n';
-        formsData.slice(0, 3).forEach((row, i) => {
-          preview += `${i + 1}: ${JSON.stringify(row)}\n`;
-        });
-        
-        resultDiv.innerHTML = `
-          <div class="success">✅ Google Sheets conectado com sucesso!</div>
-          <div class="data-preview">${preview}</div>
-        `;
-        
-        step1Ok = true;
-        updateUI();
-        
-      } catch (error) {
-        resultDiv.innerHTML = `
-          <div class="error">❌ Erro ao acessar Google Sheets: ${error.message}</div>
-          <div class="debug-section">
-            <strong>Debug:</strong><br>
-            URL: ${url}<br>
-            Erro: ${error.toString()}
-          </div>
-        `;
-        step1Ok = false;
-        updateUI();
-      }
-    }
-
-    async function testGithubUrl() {
-      const url = document.getElementById('githubUrl').value.trim();
-      const resultDiv = document.getElementById('githubResult');
-      
-      if (!url) {
-        resultDiv.innerHTML = '<div class="error">❌ Por favor, cole a URL do GitHub</div>';
-        return;
-      }
-      
-      if (!url.includes('raw.githubusercontent.com')) {
-        resultDiv.innerHTML = '<div class="warning">⚠️ URL deve ser RAW do GitHub (raw.githubusercontent.com)</div>';
-      }
-      
-      resultDiv.innerHTML = '<div class="info">🔄 Testando conexão com GitHub...</div>';
-      
-      try {
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-          throw new Error(`Erro HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const text = await response.text();
-        const lines = text.split('\n').filter(line => line.trim());
-        
-        if (lines.length === 0) {
-          throw new Error('Arquivo CSV vazio');
-        }
-        
-        githubData = parseCSV(text, true);
-        
-        let preview = `Primeira linha (cabeçalho): ${lines[0]}\n`;
-        preview += `Total de jogadores: ${githubData.length}\n\n`;
-        preview += 'Primeiros 5 jogadores:\n';
-        githubData.slice(0, 5).forEach((row, i) => {
-          if (row.length >= 3) {
-            preview += `${i + 1}: ${row[0]} - ${row[1]} - ${row[2]}\n`;
-          }
-        });
-        
-        resultDiv.innerHTML = `
-          <div class="success">✅ GitHub conectado com sucesso!</div>
-          <div class="data-preview">${preview}</div>
-        `;
-        
-        step2Ok = true;
-        updateUI();
-        
-      } catch (error) {
-        resultDiv.innerHTML = `
-          <div class="error">❌ Erro ao acessar GitHub: ${error.message}</div>
-          <div class="debug-section">
-            <strong>Debug:</strong><br>
-            URL: ${url}<br>
-            Erro: ${error.toString()}
-          </div>
-        `;
-        step2Ok = false;
-        updateUI();
-      }
-    }
+    async function testGithubUrl() {
+      const url = document.getElementById('githubUrl').value.trim();
+      const resultDiv = document.getElementById('githubResult');
+      
+      if (!url) {
+        resultDiv.innerHTML = '<div class="error">❌ Por favor, cole a URL do GitHub</div>';
+        return;
+      }
+      
+      if (!url.includes('raw.githubusercontent.com')) {
+        resultDiv.innerHTML = '<div class="warning">⚠️ URL deve ser RAW do GitHub (raw.githubusercontent.com)</div>';
+      }
+      
+      resultDiv.innerHTML = '<div class="info">🔄 Testando conexão com GitHub...</div>';
+      
+      try {
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          throw new Error(`Erro HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const text = await response.text();
+        const lines = text.split('\n').filter(line => line.trim());
+        
+        if (lines.length === 0) {
+          throw new Error('Arquivo CSV vazio');
+        }
+        
+        githubData = parseCSV(text, true);
+        
+        let preview = `Primeira linha (cabeçalho): ${lines[0]}\n`;
+        preview += `Total de jogadores: ${githubData.length}\n\n`;
+        preview += 'Primeiros 5 jogadores:\n';
+        githubData.slice(0, 5).forEach((row, i) => {
+          if (row.length >= 3) {
+            preview += `${i + 1}: ${row[0]} - ${row[1]} - ${row[2]}\n`;
+          }
+        });
+        
+        resultDiv.innerHTML = `
+          <div class="success">✅ GitHub conectado com sucesso!</div>
+          <div class="data-preview">${preview}</div>
+        `;
+        
+        step2Ok = true;
+        updateUI();
+        
+      } catch (error) {
+        resultDiv.innerHTML = `
+          <div class="error">❌ Erro ao acessar GitHub: ${error.message}</div>
+          <div class="debug-section">
+            <strong>Debug:</strong><br>
+            URL: ${url}<br>
+            Erro: ${error.toString()}
+          </div>
+        `;
+        step2Ok = false;
+        updateUI();
+      }
+    }
 
 function parseCSV(csv) {
-  const rows = csv.split('\n');
-  return rows.map(row => {
-    const columns = [];
-    let current = '';
-    let inQuotes = false;
+  const rows = csv.split('\n');
+  return rows.map(row => {
+    const columns = [];
+    let current = '';
+    let inQuotes = false;
 
-    for (let char of row) {
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        columns.push(current.trim());
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    columns.push(current.trim());
+    for (let char of row) {
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        columns.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    columns.push(current.trim());
 
-    // Remove TODAS as aspas
-    let cleanCols = columns.map(col => col.replace(/"/g, '').trim());
+    // Remove TODAS as aspas
+    let cleanCols = columns.map(col => col.replace(/"/g, '').trim());
 
-    // Se o primeiro campo tiver Nome e Posição juntos, separa
-    if (cleanCols.length === 2 && cleanCols[0].includes(',')) {
-      const [nome, posicao] = cleanCols[0].split(',').map(s => s.trim());
-      cleanCols = [nome, posicao, cleanCols[1]];
-    }
+    // Se o primeiro campo tiver Nome e Posição juntos, separa
+    if (cleanCols.length === 2 && cleanCols[0].includes(',')) {
+      const [nome, posicao] = cleanCols[0].split(',').map(s => s.trim());
+      cleanCols = [nome, posicao, cleanCols[1]];
+    }
 
-    return cleanCols;
-  });
+    return cleanCols;
+  });
 }
 
-    function normalizeString(str) {
-      return str.toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^\w\s]/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-    }
+    function normalizeString(str) {
+      return str.toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^\w\s]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
 
-    function processIntegration() {
-      if (!formsData || !githubData) {
-        document.getElementById('processResult').innerHTML = 
-          '<div class="error">❌ Execute os testes dos Passos 1 e 2 primeiro</div>';
-        return;
-      }
-      
-      document.getElementById('step3').className = 'step processing';
-      document.getElementById('processResult').innerHTML = 
-        '<div class="info">🔄 Processando integração...</div>';
-      
-      try {
-        const matched = [];
-        const notFound = [];
-        const debugInfo = [];
-        
-        // Analisa estrutura dos dados do Forms
-        debugInfo.push(`Estrutura Forms: ${formsData.length} registros`);
-        if (formsData.length > 0) {
-          debugInfo.push(`Exemplo Forms: ${JSON.stringify(formsData[0])}`);
-        }
-        
-        // Analisa estrutura dos dados do GitHub
-        debugInfo.push(`Estrutura GitHub: ${githubData.length} registros`);
-        if (githubData.length > 0) {
-          debugInfo.push(`Exemplo GitHub: ${JSON.stringify(githubData[0])}`);
-        }
-        
-        formsData.forEach((formRow, formIndex) => {
-          if (formRow.length < 2) return;
-          
-          // Assume que o nome está na segunda coluna (após timestamp)
-          const formName = formRow[1]?.trim();
-          if (!formName) return;
-          
-          debugInfo.push(`Procurando: "${formName}"`);
-          
-          const githubMatch = githubData.find((githubRow, githubIndex) => {
-            if (githubRow.length < 1) return false;
-            const githubName = githubRow[0]?.trim();
-            const match = normalizeString(githubName) === normalizeString(formName);
-            if (match) {
-              debugInfo.push(`  ✅ Encontrado: "${githubName}" (linha ${githubIndex + 1})`);
-            }
-            return match;
-          });
-          
-          if (githubMatch && githubMatch.length >= 3) {
-            matched.push({
-              name: githubMatch[0].trim(),
-              position: githubMatch[1].trim(),
-              birthYear: githubMatch[2].trim()
-            });
-          } else {
-            notFound.push({ name: formName });
-            debugInfo.push(`  ❌ Não encontrado: "${formName}"`);
-          }
-        });
-        
-        // Mostra debug
-        document.getElementById('debugInfo').style.display = 'block';
-        document.getElementById('debugDetails').innerHTML = `
-          <div class="data-preview">${debugInfo.join('\n')}</div>
-        `;
-        
-        // Gera resultado
-        generateResult(matched, notFound);
-        
-        document.getElementById('step3').className = 'step completed';
-        document.getElementById('processResult').innerHTML = `
-          <div class="success">✅ Processamento concluído! ${matched.length} encontrados, ${notFound.length} não encontrados</div>
-        `;
-        
-      } catch (error) {
-        document.getElementById('step3').className = 'step error';
-        document.getElementById('processResult').innerHTML = `
-          <div class="error">❌ Erro no processamento: ${error.message}</div>
-        `;
-      }
-    }
+    function processIntegration() {
+      if (!formsData || !githubData) {
+        document.getElementById('processResult').innerHTML = 
+          '<div class="error">❌ Execute os testes dos Passos 1 e 2 primeiro</div>';
+        return;
+      }
+      
+      document.getElementById('step3').className = 'step processing';
+      document.getElementById('processResult').innerHTML = 
+        '<div class="info">🔄 Processando integração...</div>';
+      
+      try {
+        const matched = [];
+        const notFound = [];
+        const debugInfo = [];
+        
+        debugInfo.push(`Estrutura Forms: ${formsData.length} registros`);
+        if (formsData.length > 0) {
+          debugInfo.push(`Exemplo Forms: ${JSON.stringify(formsData[0])}`);
+        }
+        
+        debugInfo.push(`Estrutura GitHub: ${githubData.length} registros`);
+        if (githubData.length > 0) {
+          debugInfo.push(`Exemplo GitHub: ${JSON.stringify(githubData[0])}`);
+        }
+        
+        formsData.forEach((formRow, formIndex) => {
+          if (formRow.length < 2) return;
+          
+          const formName = formRow[1]?.trim();
+          if (!formName) return;
+          
+          debugInfo.push(`Procurando: "${formName}"`);
+          
+          const githubMatch = githubData.find((githubRow, githubIndex) => {
+            if (githubRow.length < 1) return false;
+            const githubName = githubRow[0]?.trim();
+            const match = normalizeString(githubName) === normalizeString(formName);
+            if (match) {
+              debugInfo.push(`  ✅ Encontrado: "${githubName}" (linha ${githubIndex + 1})`);
+            }
+            return match;
+          });
+          
+          if (githubMatch && githubMatch.length >= 3) {
+            matched.push({
+              name: githubMatch[0].trim(),
+              position: githubMatch[1].trim(),
+              birthYear: githubMatch[2].trim()
+            });
+          } else {
+            notFound.push({ name: formName });
+            debugInfo.push(`  ❌ Não encontrado: "${formName}"`);
+          }
+        });
+        
+        document.getElementById('debugInfo').style.display = 'block';
+        document.getElementById('debugDetails').innerHTML = `
+          <div class="data-preview">${debugInfo.join('\n')}</div>
+        `;
+        
+        generateResult(matched, notFound);
+        
+        document.getElementById('step3').className = 'step completed';
+        document.getElementById('processResult').innerHTML = `
+          <div class="success">✅ Processamento concluído! ${matched.length} encontrados, ${notFound.length} não encontrados</div>
+        `;
+        
+      } catch (error) {
+        document.getElementById('step3').className = 'step error';
+        document.getElementById('processResult').innerHTML = `
+          <div class="error">❌ Erro no processamento: ${error.message}</div>
+        `;
+      }
+    }
 
-    function generateResult(matched, notFound) {
-      let csv = 'Nome,Posição,Nascimento\n';
-      matched.forEach(player => {
-        csv += `"${player.name},${player.position}","${player.birthYear}"\n`;
-      });
-      
-      window.resultCSV = csv;
-      
-      let resultHtml = `
-        <h3>✅ Jogadores Encontrados (${matched.length})</h3>
-        <div class="data-preview">${csv}</div>
-      `;
-      
-      if (notFound.length > 0) {
-        resultHtml += `
-          <h3>❌ Não Encontrados (${notFound.length})</h3>
-          <div class="data-preview">${notFound.map(p => p.name).join('\n')}</div>
-        `;
-      }
-      
-      document.getElementById('finalData').innerHTML = resultHtml;
-      document.getElementById('finalResult').style.display = 'block';
-      document.getElementById('downloadBtn').style.display = 'inline-block';
-    }
+    function generateResult(matched, notFound) {
+      let csv = 'Nome,Posição,Nascimento\n';
+      matched.forEach(player => {
+        // A linha abaixo foi alterada para gerar 3 colunas e remover as aspas
+        csv += `${player.name},${player.position},${player.birthYear}\n`;
+      });
+      
+      window.resultCSV = csv;
+      
+      let resultHtml = `
+        <h3>✅ Jogadores Encontrados (${matched.length})</h3>
+        <div class="data-preview">${csv}</div>
+      `;
+      
+      if (notFound.length > 0) {
+        resultHtml += `
+          <h3>❌ Não Encontrados (${notFound.length})</h3>
+          <div class="data-preview">${notFound.map(p => p.name).join('\n')}</div>
+        `;
+      }
+      
+      document.getElementById('finalData').innerHTML = resultHtml;
+      document.getElementById('finalResult').style.display = 'block';
+      document.getElementById('downloadBtn').style.display = 'inline-block';
+    }
 
-    function downloadResult() {
-      if (!window.resultCSV) return;
-      
-      const blob = new Blob([window.resultCSV], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      
-      link.setAttribute('href', url);
-      link.setAttribute('download', `jogadores_presentes_${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
+    function downloadResult() {
+      if (!window.resultCSV) return;
+      
+      const blob = new Blob([window.resultCSV], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', `jogadores_presentes_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
 
-    // Carrega URLs salvas
-    document.addEventListener('DOMContentLoaded', () => {
-      const savedFormsUrl = localStorage.getItem('formsUrl');
-      const savedGithubUrl = localStorage.getItem('githubUrl');
-      
-      if (savedFormsUrl) document.getElementById('formsUrl').value = savedFormsUrl;
-      if (savedGithubUrl) document.getElementById('githubUrl').value = savedGithubUrl;
-    });
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedFormsUrl = localStorage.getItem('formsUrl');
+      const savedGithubUrl = localStorage.getItem('githubUrl');
+      
+      if (savedFormsUrl) document.getElementById('formsUrl').value = savedFormsUrl;
+      if (savedGithubUrl) document.getElementById('githubUrl').value = savedGithubUrl;
+    });
 
-    // Salva URLs
-    document.getElementById('formsUrl').addEventListener('input', (e) => {
-      localStorage.setItem('formsUrl', e.target.value);
-    });
+    document.getElementById('formsUrl').addEventListener('input', (e) => {
+      localStorage.setItem('formsUrl', e.target.value);
+    });
 
-    document.getElementById('githubUrl').addEventListener('input', (e) => {
-      localStorage.setItem('githubUrl', e.target.value);
-    });
-  </script>
-</body>
-</html>
+    document.getElementById('githubUrl').addEventListener('input', (e) => {
+      localStorage.setItem('githubUrl', e.target.value);
+    });
+</script>
