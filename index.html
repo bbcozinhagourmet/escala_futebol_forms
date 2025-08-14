@@ -300,7 +300,7 @@
         }
         columns.push(current.trim());
         
-        return columns.map(col => col.replace(/^"|"$/g, ''));
+        return columns.map(col => col.replace(/"/g, '').trim());
       });
     }
 
