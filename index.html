@@ -278,31 +278,30 @@
       }
     }
 
-    function parseCSV(text, skipHeader = false) {
-      const lines = text.split('\n').filter(line => line.trim());
-      if (skipHeader && lines.length > 0) lines.shift();
-      
-      return lines.map(line => {
-        const columns = [];
-        let current = '';
-        let inQuotes = false;
-        
-        for (let i = 0; i < line.length; i++) {
-          const char = line[i];
-          if (char === '"') {
-            inQuotes = !inQuotes;
-          } else if (char === ',' && !inQuotes) {
-            columns.push(current.trim());
-            current = '';
-          } else {
-            current += char;
-          }
-        }
+function parseCSV(csv) {
+  const rows = csv.split('\n');
+  return rows.map(row => {
+    const columns = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let char of row) {
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
         columns.push(current.trim());
-        
-        return columns.map(col => col.replace(/"/g, '').trim());
-      });
+        current = '';
+      } else {
+        current += char;
+      }
     }
+    columns.push(current.trim());
+
+    // Remove TODAS as aspas de cada coluna
+    return columns.map(col => col.replace(/"/g, '').trim());
+  });
+}
+
 
     function normalizeString(str) {
       return str.toLowerCase()
