@@ -436,7 +436,7 @@ function parseCSV(csv) {
       const url = URL.createObjectURL(blob);
       
       link.setAttribute('href', url);
-      link.setAttribute('download', `jogadores_presentes_${new Date().toISOString().split('T')[0]}.csv`);
+      link.setAttribute('download', `jogadores.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
